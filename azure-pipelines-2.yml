@@ -1,0 +1,101 @@
+trigger:
+  branches:
+    include: 
+    - main
+  paths: 
+    include: 
+    - environment/dev
+pool: Agentpool-2
+# variables:
+# - name: 
+#   value: 
+  
+stages:
+- stage: tflintScan
+  displayName: Linting
+  jobs:
+  - job: tflint
+    displayName: tflint-Job
+    steps: 
+    - task: PowerShell@2
+      inputs:
+        targetType: 'inline'
+        script: |
+          Invoke-WebRequest `
+            -Uri "https://github.com/terraform-linters/tflint/releases/latest/download/tflint_windows_amd64.zip" `
+            -OutFile "tflint.zip"
+          
+          Expand-Archive "tflint.zip" -DestinationPath "$(Agent.ToolsDirectory)\tflint" -Force
+          
+          & "$(Agent.ToolsDirectory)\tflint\tflint.exe" --init
+          & "$(Agent.ToolsDirectory)\tflint\tflint.exe" --recursive
+          $tflintExit = $LASTEXITCODE
+          
+          if ($tflintExit -eq 2) {
+            Write-Host "TFLint: Only warnings found. Allowing pipeline to continue."
+            exit 0
+          }
+          
+          exit $tflintExit
+
+- stage: Terraform_Init_Validate
+  displayName: Pre-Commit
+  jobs: 
+  - job: TerraformInitValidate
+    displayName: TerraformInitValidateJob
+    steps:
+    - task: TerraformInstaller@1
+      displayName: TerraformInstall
+      inputs:
+        terraformVersion: 'latest'
+    - task: TerraformTask@5
+      displayName: Terraform_Init
+      inputs:
+        provider: 'azurerm'
+        command: 'init'
+        workingDirectory: '$(System.DefaultWorkingDirectory)/environment/dev'
+        backendServiceArm: 'Sc-new'
+        backendAzureRmResourceGroupName: 'tfstate-dev-rg'
+        backendAzureRmStorageAccountName: 'tfstatedevstorage1'
+        backendAzureRmContainerName: 'tfstatecontainer'
+        backendAzureRmKey: 'dev.terraform.tfstate'
+    - task: TerraformTask@5
+      displayName: TerraformValidate
+      inputs:
+        provider: 'azurerm'
+        command: 'validate'
+- stage: 
+  displayName: TerraformPlan
+  jobs:
+  - job: TerraformPlan
+    displayName: TerraformPlanJob
+    steps:
+    - task: TerraformTask@5
+      displayName: Terraform_Init
+      inputs:
+        provider: 'azurerm'
+        command: 'init'
+        workingDirectory: '$(System.DefaultWorkingDirectory)/environment/dev'
+        backendServiceArm: 'Sc-new'
+        backendAzureRmResourceGroupName: 'tfstate-dev-rg'
+        backendAzureRmStorageAccountName: 'tfstatedevstorage1'
+        backendAzureRmContainerName: 'tfstatecontainer'
+        backendAzureRmKey: 'dev.terraform.tfstate'
+    - task: TerraformTask@5
+      displayName: Terraform_Plan
+      inputs:
+        provider: 'azurerm'
+        command: 'plan'
+        workingDirectory: '$(System.DefaultWorkingDirectory)/environment/dev'
+        environmentServiceNameAzureRM: 'Sc-new'
+- stage: ManualValidation
+  displayName: ManualValidation
+  pool: server
+  jobs:
+  - job: ManualValidationJob
+    steps:
+    - task: ManualValidation@1
+      displayName: Manual_Validation
+      inputs:
+        instructions: 'Please check the code thoroughly'
+  

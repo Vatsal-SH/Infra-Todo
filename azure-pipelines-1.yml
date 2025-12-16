@@ -1,0 +1,6 @@
+trigger: none
+pool: Agentpool-2
+
+jobs:
+  - template: template1.yml
+  

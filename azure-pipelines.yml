@@ -1,0 +1,90 @@
+trigger: none
+
+parameters:
+  - name: runInit
+    type: boolean
+    default: true
+  - name: runFmt
+    type: boolean
+    default: true
+  - name: runValidate
+    type: boolean
+    default: true
+  - name: runPlan
+    type: boolean
+    default: true
+
+stages : 
+- stage : Init_Validate_Fmt
+  displayName : Terraform Init, Fmt, Validate
+  pool : Agentpool-2
+
+  jobs : 
+  - job : TerraformInitFmtValidate
+    displayName: Terraform_Init_Fmt_Validate
+    steps:
+      - task: TerraformInstaller@1
+        inputs:
+          terraformVersion: 'latest'
+      - task: TerraformTask@5
+        displayName: Terraform_Init
+        inputs:
+          provider: 'azurerm'
+          command: 'init'
+          workingDirectory: '$(System.DefaultWorkingDirectory)/environment/dev'
+          backendServiceArm: 'Sc-new'
+          backendAzureRmOverrideSubscriptionID: '93b568fd-bf85-44bc-8f71-c314751c396d'
+          backendAzureRmResourceGroupName: 'tfstate-dev-rg'
+          backendAzureRmStorageAccountName: 'tfstatedevstorage1'
+          backendAzureRmContainerName: 'tfstatecontainer'
+          backendAzureRmKey: 'dev.terraform.tfstate'
+      - task: TerraformTask@5
+        displayName: Terraform_Validate
+        inputs:
+          provider: 'azurerm'
+          command: 'validate'
+          workingDirectory: '$(System.DefaultWorkingDirectory)/environment/dev'
+      - task: TerraformTask@5
+        displayName: Terraform_Fmt
+        inputs:
+          provider: 'azurerm'
+          command: 'custom'
+          outputTo: 'console'
+          customCommand: 'fmt'
+          workingDirectory: '$(System.DefaultWorkingDirectory)/environment/dev'
+          environmentServiceNameAzureRM: 'Sc-new'
+- stage : 
+  displayName: Manual_validation
+  pool : server
+  jobs: 
+  - job : ManualValidation
+    steps:
+      - task: ManualValidation@1
+        displayName: Manual_validation
+        inputs:
+          instructions: 'Please check the code thoroughly'
+- stage : Terraform_Plan
+  displayName: Terraform Plan
+  pool : Agentpool-2
+  jobs :
+  - job : TerraformPlan
+    steps:
+      - task: TerraformTask@5
+        displayName: Terraform_Init
+        inputs:
+          provider: 'azurerm'
+          command: 'init'
+          workingDirectory: '$(System.DefaultWorkingDirectory)/environment/dev'
+          backendServiceArm: 'Sc-new'
+          backendAzureRmOverrideSubscriptionID: '93b568fd-bf85-44bc-8f71-c314751c396d'
+          backendAzureRmResourceGroupName: 'tfstate-dev-rg'
+          backendAzureRmStorageAccountName: 'tfstatedevstorage1'
+          backendAzureRmContainerName: 'tfstatecontainer'
+          backendAzureRmKey: 'dev.terraform.tfstate'
+      - task: TerraformTask@5
+        displayName: Terraform_Plan
+        inputs:
+          provider: 'azurerm'
+          command: 'plan'
+          workingDirectory: '$(System.DefaultWorkingDirectory)/environment/dev'
+          environmentServiceNameAzureRM: 'Sc-new'
