@@ -6,7 +6,7 @@ type = map(object({
     managed_by = string
   })) 
 }
-variable networks_vnet {
+variable networks {
 type = map(object({
     vnet_name           = string
     cidr                = list(string)

@@ -12,7 +12,7 @@ module "keyvault" {
 module "vnet" {
    depends_on = [ module.rg ]
    source = "../../modules/azurerm_networking"
-   networks = var.networks_vnet
+   networks = var.networks
 }
 module "pip" {
    depends_on = [ module.rg ]
