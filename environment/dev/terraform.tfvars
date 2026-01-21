@@ -1,6 +1,6 @@
 resource_groups = {
   rg1 = {
-    name     = "rg-demo1"
+    name     = "rg-demo"
     location = "East US"
     tags = {
       environment = "dev"
