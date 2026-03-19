@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: infra
+        working-directory: Vatsal-SH/Infra-Todo
     steps:
     - name: Checkout Code
       uses: actions/checkout@v4
